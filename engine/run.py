@@ -310,6 +310,7 @@ def main(argv=None) -> int:
     report.write_json(root / "runs" / as_of / "summary.json", {**summary, "trade_list": trades})
     report.write_json(root / "state" / "last_run.json", {**summary, "trade_list": trades})
     report.write_report(root, pf, summary, trades)
+    report.write_dashboard_files(root, pf, summary)
     log.info("done: NAV C$%.2f, benchmark C$%.2f, %d trades, status %s", nav, bench, len(trades), summary["status"])
     return 0
 

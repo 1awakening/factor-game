@@ -1,0 +1,2 @@
+date,mode,status,nav_cad,benchmark_cad,return_since_start,benchmark_return_since_start,cash_cad,total_costs_cad,n_us,n_ca,trades,warnings,next_run_date,next_run_type,inception_date,rules_version,message
+2026-10-10,init,ok,29931.158336,30000.0,-0.002295,0.0,997.705278,68.841664,20,9,29,1,2026-10-15,check,2026-10-10,1,

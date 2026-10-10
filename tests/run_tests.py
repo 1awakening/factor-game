@@ -155,6 +155,16 @@ def test_lifecycle():
     navcsv = pd.read_csv(root / "state" / "nav.csv")
     check(list(navcsv["date"]) == ["2026-10-15", "2026-12-15", "2027-02-15", "2027-03-15"], "NAV history rows")
     check((root / "REPORT.md").exists(), "report written")
+    h = pd.read_csv(root / "state" / "holdings.csv")
+    d3 = load(root)
+    check(len(h) == len(d3["positions"]), "holdings.csv matches portfolio")
+    check(abs(h["value_cad"].sum() + d3["cash_cad"] - nav_of(d3)) < 0.01, "holdings.csv values sum to NAV")
+    sm = pd.read_csv(root / "state" / "summary.csv")
+    check(len(sm) == 1 and sm["next_run_date"].iloc[0] == "2027-04-15" and sm["next_run_type"].iloc[0] == "check",
+          "summary.csv has next run (Apr 15 check)")
+    from engine.report import next_run
+    check(next_run("2026-10-10") == ("2026-10-15", "check"), "next run before the 15th")
+    check(next_run("2027-04-15") == ("2027-05-15", "rebalance"), "next run on the 15th")
     print(f"lifecycle: final NAV C${navcsv['nav_cad'].iloc[-1]:,.2f} vs benchmark "
           f"C${navcsv['benchmark_cad'].iloc[-1]:,.2f}; trades {len(pd.read_csv(root / 'state' / 'trades.csv'))}")
     shutil.rmtree(root)

@@ -106,6 +106,42 @@ def write_report(root: Path, pf, summary: dict, trades: list[dict]) -> None:
     (root / "REPORT.md").write_text("\n".join(lines) + "\n")
 
 
+HOLDING_FIELDS = ["ticker", "name", "market", "sector", "value_cad", "weight", "return_since_entry",
+                  "composite_pct", "entry_date", "last_price_local", "last_price_date", "flag"]
+SUMMARY_FIELDS = ["date", "mode", "status", "nav_cad", "benchmark_cad", "return_since_start",
+                  "benchmark_return_since_start", "cash_cad", "total_costs_cad", "n_us", "n_ca", "trades",
+                  "warnings", "next_run_date", "next_run_type", "inception_date", "rules_version", "message"]
+
+
+def next_run(as_of: str) -> tuple[str, str]:
+    d = pd.Timestamp(as_of)
+    nxt = (d + pd.offsets.MonthBegin(1)).replace(day=15) if d.day >= 15 else d.replace(day=15)
+    return nxt.strftime("%Y-%m-%d"), ("rebalance" if nxt.month in C.REBALANCE_MONTHS else "check")
+
+
+def write_dashboard_files(root: Path, pf, summary: dict) -> None:
+    """Flat files for the dashboard: current holdings and a one-row run summary."""
+    nav = pf.nav()
+    rows = []
+    for p in sorted(pf.positions, key=lambda q: (q["market"] != "US", -q["value_cad"])):
+        rows.append({**p, "weight": p["value_cad"] / nav if nav else None,
+                     "return_since_entry": p.get("tr_index", 1.0) - 1, "flag": p.get("flag") or
+                     ("stale price" if p.get("stale") else "")})
+    path = root / "state" / "holdings.csv"
+    if path.exists():
+        path.unlink()
+    append_csv(path, HOLDING_FIELDS, rows)
+    nd, nt = next_run(summary["date"])
+    row = {**summary, "n_us": len(pf.held("US")), "n_ca": len(pf.held("CA")),
+           "total_costs_cad": pf.d.get("total_costs_cad", 0.0), "warnings": len(summary.get("warnings", [])),
+           "next_run_date": nd, "next_run_type": nt, "inception_date": pf.d["inception_date"],
+           "message": summary.get("message", "")}
+    path = root / "state" / "summary.csv"
+    if path.exists():
+        path.unlink()
+    append_csv(path, SUMMARY_FIELDS, [row])
+
+
 def write_json(path: Path, obj) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(clean(obj), indent=2, default=str) + "\n")
