@@ -1,0 +1,70 @@
+name: factor-game
+
+on:
+  schedule:
+    # 22:30 UTC on the 15th = after the US and Canadian closes, year-round
+    - cron: "30 22 15 * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "auto (default), init, check or rebalance"
+        required: true
+        default: "auto"
+        type: choice
+        options: [auto, init, check, rebalance]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: factor-game
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+
+      # A code push only starts the game if there's no portfolio yet; otherwise it
+      # just runs the tests. Trading happens on the schedule (or a manual run).
+      - name: Decide what to run
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ -f state/portfolio.json ]; then echo "mode=none" >> "$GITHUB_OUTPUT"; else echo "mode=init" >> "$GITHUB_OUTPUT"; fi
+          else
+            echo "mode=${{ github.event.inputs.mode || 'auto' }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install --upgrade -r requirements.txt
+
+      - name: Offline tests (synthetic market)
+        run: python -m tests.run_tests > test.log 2>&1 || (tail -60 test.log; exit 1)
+
+      - name: Run the engine
+        id: engine
+        if: steps.gate.outputs.mode != 'none'
+        run: python -m engine.run --mode "${{ steps.gate.outputs.mode }}"
+
+      - name: Save results to the repository
+        if: always() && steps.gate.outputs.mode != 'none' && steps.engine.conclusion != 'skipped'
+        run: |
+          git config user.name "factor-game-bot"
+          git config user.email "factor-game-bot@users.noreply.github.com"
+          git add -A state runs REPORT.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "Run $(TZ=America/Toronto date +%F): ${{ steps.gate.outputs.mode }}"
+            git pull --rebase --quiet || true
+            git push
+          fi

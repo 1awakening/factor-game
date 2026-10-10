@@ -1,0 +1,7 @@
+# yfinance is left unpinned on purpose: Yahoo changes its site often and only the
+# latest release tends to keep working.
+yfinance
+pandas>=2.2
+numpy>=1.26
+requests>=2.31
+lxml>=5.0
