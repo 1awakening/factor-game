@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-15",
+  "mode": "check",
+  "status": "ok",
+  "rules_version": 1,
+  "warnings": [],
+  "universe": {},
+  "usdcad": 1.4196,
+  "nav_cad": 30335.35771622787,
+  "benchmark_cad": 29853.358446378403,
+  "cash_cad": 997.7052778609032,
+  "return_since_start": 0.011178590540928957,
+  "benchmark_return_since_start": -0.004888051787386605,
+  "n_positions": {
+    "US": 20,
+    "CA": 9
+  },
+  "trades": 0,
+  "inception_date": "2026-10-10",
+  "trade_list": []
+}
